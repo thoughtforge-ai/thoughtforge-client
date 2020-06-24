@@ -34,8 +34,8 @@ class ExampleMountainCarSession(BaseThoughtForgeClientSession):
         
         # step openAI gym env and get updated observation
         env_step_result = self.env.step([motor_value])
-        self.last_observation, _reward_unused, terminal, _ = env_step_result
-        self.score += 1
+        self.last_observation, reward, terminal, _ = env_step_result
+        self.score += reward
         if terminal:
             print("End of episode. Score =", self.score)
             self._reset_env()
