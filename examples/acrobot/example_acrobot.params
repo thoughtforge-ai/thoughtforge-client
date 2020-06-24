@@ -1,0 +1,17 @@
+{
+  "version": 0,
+  "internal_timescale": 10, 
+  "ticks_per_sensor_sample": 30,
+  "center_block_size_extra": 9,
+  "center_block_stride": 3,
+  "motors" : [{"name": "motor1", 
+               "category": "BETA"},
+               {"name": "motor2", 
+               "category": "BETA"}],
+  "sensors" : [{"name": "height_sensor", 
+                "category": "ALPHA-BETA", 
+                "copies": 1, 
+                "sensor_range": [-4.0, 4.0], 
+                "length": 2, 
+                "width": 3}]
+}
