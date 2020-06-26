@@ -80,19 +80,31 @@ class BaseThoughtForgeClientSession():
         init_url = self._build_url('/initSession', initSession_params)
         headers = {"X-thoughtforge-key": self.api_key}
         response = requests.post(init_url, headers=headers, data=model_data_to_send)
+        initialization_failed = False
         if response.ok:
             response_dict = response.json()
             self.session_id = response_dict['session_id']
             if self.session_id >= 0:
                 self.motor_name_map = json.loads(response_dict['motor_ids'])
                 self.sensor_name_map = json.loads(response_dict['sensor_ids'])
-                print("Session", self.session_id, "has been initialized.")
+                if len(self.motor_name_map) != len(self.client_params['motors']):
+                    print("Some motors failed registration")
+                    initialization_failed = True
+                if len(self.sensor_name_map) != len(self.client_params['sensors']):
+                    print("Some sensors failed registration")
+                    initialization_failed = True
             else:
-                print("Session inialization failed.")
+                initialization_failed = True
             session_log = json.loads(response_dict['session_log'])
             self.process_session_logs(session_log)
         else:
-            print("Session inialization failed. Server returned", response)
+            initialization_failed = True
+
+        if initialization_failed:
+            print("Session inialization failed.")
+            self.session_id = -1
+        else:
+            print("Session", self.session_id, "has been initialized.")
 
     def _start_sim(self):
         """ Starts simulation of the agent and environment and triggers subsequent calls to update() """
