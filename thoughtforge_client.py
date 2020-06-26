@@ -27,8 +27,9 @@ class BaseThoughtForgeClientSession():
             self.sensor_name_map = {}
             self.motor_name_map = {}
             self._stop_requested = False
+            self.all_session_logs = []
             self._initialize_session()
-            if self.session_id != None:
+            if self.session_id is not None and self.session_id >= 0:
                 self._start_sim()
         except (KeyboardInterrupt, SystemExit):
             print("KeyboardInterrupt/SystemExit received.")
@@ -82,9 +83,14 @@ class BaseThoughtForgeClientSession():
         if response.ok:
             response_dict = response.json()
             self.session_id = response_dict['session_id']
-            self.motor_name_map = json.loads(response_dict['motor_ids'])
-            self.sensor_name_map = json.loads(response_dict['sensor_ids'])
-            print("Session", self.session_id, "has been initialized.")
+            if self.session_id >= 0:
+                self.motor_name_map = json.loads(response_dict['motor_ids'])
+                self.sensor_name_map = json.loads(response_dict['sensor_ids'])
+                print("Session", self.session_id, "has been initialized.")
+            else:
+                print("Session inialization failed.")
+            session_log = json.loads(response_dict['session_log'])
+            self.process_session_logs(session_log)
         else:
             print("Session inialization failed. Server returned", response)
 
@@ -108,18 +114,24 @@ class BaseThoughtForgeClientSession():
             if not response.ok:
                 print("Session update failed. Server returned", response)
             response_dict = response.json()
-            int_key_response_dict = {int(key):val for key, val in response_dict.items()}
-            next_motor_action_dict = {motor_name: int_key_response_dict[motor_id] for motor_name, motor_id in self.motor_name_map.items()}
+            motor_dict = response_dict['motor_dict']
+            session_log = json.loads(response_dict['session_log'])
+            self.process_session_logs(session_log)
+            int_key_response_dict = {int(key):val for key, val in motor_dict.items()}
+            next_motor_action_dict = {motor_name: safe_dict_get(int_key_response_dict, motor_id, 0.0) for motor_name, motor_id in self.motor_name_map.items()}
 
     def close(self):
         # shut down session
-        if self.session_id is not None:
+        if self.session_id is not None and self.session_id >= 0:
             shutdownSession_params = {'session_id': self.session_id}
             shutdown_url = self._build_url('/shutdownSession', shutdownSession_params)
             headers = {"X-thoughtforge-key": self.api_key}
             response = requests.post(shutdown_url, headers=headers)
             if response.ok:
                 print("Session", self.session_id, "has been shut down.")
+                response_dict = response.json()
+                session_log = json.loads(response_dict['session_log'])
+                self.process_session_logs(session_log)
             else:
                 print("Session shutdown failed. Server returned", response)
             self.session_id = None
@@ -147,3 +159,9 @@ class BaseThoughtForgeClientSession():
         """ Implement this function in client code to update environment state and return sensor data. """
         raise NotImplementedError
     
+    def process_session_logs(self, session_logs):
+        if len(session_logs) > 0:
+            print("Server messages recieved:")
+            for log_messsage in session_logs:
+                print(" -", log_messsage)
+            self.all_session_logs.extend(session_logs)
