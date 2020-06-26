@@ -95,7 +95,7 @@ class BaseThoughtForgeClientSession():
                     initialization_failed = True
             else:
                 initialization_failed = True
-            session_log = json.loads(response_dict['session_log'])
+            session_log = json.loads(safe_dict_get(response_dict, 'session_log', []))
             self.process_session_logs(session_log)
         else:
             initialization_failed = True
@@ -127,7 +127,7 @@ class BaseThoughtForgeClientSession():
                 print("Session update failed. Server returned", response)
             response_dict = response.json()
             motor_dict = response_dict['motor_dict']
-            session_log = json.loads(response_dict['session_log'])
+            session_log = json.loads(safe_dict_get(response_dict, 'session_log', []))
             self.process_session_logs(session_log)
             int_key_response_dict = {int(key):val for key, val in motor_dict.items()}
             next_motor_action_dict = {motor_name: safe_dict_get(int_key_response_dict, motor_id, 0.0) for motor_name, motor_id in self.motor_name_map.items()}
@@ -142,7 +142,7 @@ class BaseThoughtForgeClientSession():
             if response.ok:
                 print("Session", self.session_id, "has been shut down.")
                 response_dict = response.json()
-                session_log = json.loads(response_dict['session_log'])
+                session_log = json.loads(safe_dict_get(response_dict, 'session_log', []))
                 self.process_session_logs(session_log)
             else:
                 print("Session shutdown failed. Server returned", response)
