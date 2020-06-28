@@ -145,11 +145,15 @@ class ExampleReacherSession(BaseThoughtForgeClientSession):
         self.last_delta1_rotvel1 = delta1_rotvel1_sensor_val
         
         sensor_values = {
-            "angle0_sensor" : angle0_sensor_val,
+            "angle0_sensor1" : angle0_sensor_val,
+            "angle0_sensor2" : angle0_sensor_val,
+            "angle0_sensor3" : angle0_sensor_val,
+            "angle0_sensor4" : angle0_sensor_val,
             'rotvel1_sensor': rotvel1_sensor_val,
             'delta1_rotvel1_sensor': delta1_rotvel1_sensor_val,
             'delta2_rotvel1_sensor': delta2_rotvel1_sensor_val,
-            'radius_sensor': radius_sensor_val,
+            'radius_sensor1': radius_sensor_val,
+            'radius_sensor2': radius_sensor_val,
             'rotvel0_sensor': rotvel0_sensor_val,
             'delta1_rotvel0_sensor': delta1_rotvel0_sensor_val,
             'delta2_rotvel0_sensor': delta2_rotvel0_sensor_val

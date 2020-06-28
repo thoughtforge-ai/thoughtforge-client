@@ -45,8 +45,11 @@ class ExampleMountainCarSession(BaseThoughtForgeClientSession):
         height = math.sin(3 * self.last_observation[0]) - 1
         height_vel = height / (self.last_observation[1] + EPSILON)
         sensor_values = {
-            'pos_sensor': x_position,
-            'height_vel_sensor': height_vel,
+            'pos_sensor1': x_position,
+            'pos_sensor2': x_position,
+            'height_vel_sensor1': height_vel,
+            'height_vel_sensor2': height_vel,
+            'height_vel_sensor3': height_vel,
         }
         return sensor_values
 

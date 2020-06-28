@@ -1,5 +1,6 @@
 
 import json, os, requests, traceback
+from typing import List
 from urllib.parse import urlencode, urlparse, urlunparse
 
 from utils import safe_dict_get, load_client_params, CURRENT_CLIENT_PARAMS_VERSION
@@ -87,11 +88,27 @@ class BaseThoughtForgeClientSession():
             if self.session_id >= 0:
                 self.motor_name_map = json.loads(response_dict['motor_ids'])
                 self.sensor_name_map = json.loads(response_dict['sensor_ids'])
-                if len(self.motor_name_map) != len(self.client_params['motors']):
-                    print("Some motors failed registration")
+                self.block_name_map = json.loads(response_dict['block_ids'])
+
+                # for validation, check that we have the expected number of sensors
+                total_sensors = 0
+                for entry in self.client_params['sensors']:
+                    if isinstance(entry['name'], List):
+                        total_sensors += len(entry['name'])
+                    else:
+                        total_sensors += 1
+                if len(self.sensor_name_map) != total_sensors:
+                    print("Some sensors failed registration. Found", len(self.sensor_name_map), "expected", total_sensors)
                     initialization_failed = True
-                if len(self.sensor_name_map) != len(self.client_params['sensors']):
-                    print("Some sensors failed registration")
+                # for validation, check that we have the expected number of motors
+                total_motors = 0
+                for entry in self.client_params['motors']:
+                    if isinstance(entry['name'], List):
+                        total_motors += len(entry['name'])
+                    else:
+                        total_motors += 1
+                if len(self.motor_name_map) != total_motors:
+                    print("Some motors failed registration. Found", len(self.sensor_name_map), "expected", total_sensors)
                     initialization_failed = True
             else:
                 initialization_failed = True

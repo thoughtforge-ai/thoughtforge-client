@@ -49,8 +49,10 @@ class ExampleCartpoleSession(BaseThoughtForgeClientSession):
         sensor_values = {
             'pos_sensor': self.last_observation[0],
             'vel_sensor': self.last_observation[1],
-            'angel_sensor': self.last_observation[2],
-            'angel_vel_sensor': self.last_observation[3],
+            'angle_sensor1': self.last_observation[2],
+            'angle_sensor2': self.last_observation[2],
+            'angle_vel_sensor1': self.last_observation[3],
+            'angle_vel_sensor2': self.last_observation[3],
         }
         return sensor_values
 

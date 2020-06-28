@@ -10,7 +10,6 @@
                "category": "BETA"}],
   "sensors" : [{"name": "height_sensor", 
                 "category": "ALPHA-BETA", 
-                "copies": 1, 
                 "sensor_range": [-4.0, 4.0], 
                 "length": 2, 
                 "width": 3}]
