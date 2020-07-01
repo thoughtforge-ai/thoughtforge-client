@@ -63,7 +63,7 @@ class BaseThoughtForgeClientSession():
     def _validate_sensors_motors(self):
         """ this function is called after receiving a successful response 
         during server initialzation to ensure all motors and sensors were
-        successfully registered"""
+        successfully registered """
         validation_successful = True
         # for validation, check that we have the expected number of sensors
         total_sensors = 0
