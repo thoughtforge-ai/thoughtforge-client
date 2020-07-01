@@ -9,7 +9,24 @@ from utils import safe_dict_get, load_client_params, CURRENT_CLIENT_PARAMS_VERSI
 
 
 class BaseThoughtForgeClientSession():
-    """ Base class for implementing a client for the ThoughtForge server API """
+    """ BaseThoughtForgeClientSession
+    
+    This class is a base class for implementing client applications on the ThoughtForge 
+    platform. It manages the protocol for talking to the server and is inteded to be inherited
+    by users to implement simple interative simulations.
+
+    .. seealso:: Please see the ./examples/cartpole/ directory for an example usage of this class.
+
+    :param file_name: The parameter file for specifying sensors, motors and model configuration
+    :type file_name: str
+    :param host: Host address for the destination ThoughtForge server. Defaults to `None`. If left unset, will be populated from hte environment variable 'THOUGHTFORGE_HOST'
+    :type host: str
+    :param port: Host port for the destination ThoughtForge server. Defaults to `None`. If left unset, will be populated from hte environment variable 'THOUGHTFORGE_PORT'
+    :type port: int
+    :param model_data: Optional parameter for supplying saved model data at initialization of the sim.
+    :type model_data: dict
+
+    """
     def __init__(self, file_name, host=None, port=None, api_key=None, model_data=None):
         try:
             load_dotenv()
@@ -53,11 +70,11 @@ class BaseThoughtForgeClientSession():
         except Exception as e:
             print(traceback.format_exc())
             print("Exception received:", e)
-            self.close()
+            self._close_session()
             # let all other exceptions pass through after we close the session
             raise
         finally:
-            self.close()
+            self._close_session()
 
     def _build_url(self, path, args_dict=None):
         """ Helper function for generating request URLS """ 
@@ -101,7 +118,7 @@ class BaseThoughtForgeClientSession():
         """ Initializes a remote session on the ThoughtForge server """ 
         # close old session
         if self.session_id != None:
-            self.close()
+            self._close_session()
         
         # if initialized with model_data, include in the post request
         model_data_to_send = None
@@ -272,7 +289,7 @@ class BaseThoughtForgeClientSession():
         self.motor_value_history = []
         self.debug_data_history = []
 
-    def close(self):
+    def _close_session(self):
         """ Closes the remote ThoughtForge session """ 
         # shut down session
         if self.session_id is not None and self.session_id >= 0:
@@ -290,15 +307,25 @@ class BaseThoughtForgeClientSession():
             self._end_sim()
 
     def get_num_motors(self):
-        """ returns the number of motors that have been added to the session model """
+        """ returns the number of motors that have been added to the session model 
+        
+        :return: The number of Motors.
+        :rtype: int
+        """
         return len(self.motor_name_map)
 
     def get_num_sensors(self):
-        """ returns the number of sensors that have been added to the session model """
+        """ returns the number of sensors that have been added to the session model 
+        
+        :return: The number of sensors.
+        :rtype: int
+        """
         return len(self.sensor_name_map)
 
     def stop_sim(self):
-        """ This function requests stopping of the simulation.  """
+        """ This function requests stopping of the simulation.  
+        Client applications can call this to request shutdown of the simulation loop 
+        """
         self._stop_requested = True
 
     def sim_started_notification(self):
@@ -312,11 +339,13 @@ class BaseThoughtForgeClientSession():
         pass
 
     def debug_data_received_notification(self, debug_data_dict):
-        """ This function is called automatically when debug data is being collected.
+        """ 
+        This function is called automatically when debug data is being collected.
         Implement this function in a user client session to perform custom runtime debugging.
-        Debug mode can be enabled in a client params file by setting  
-        "enable_debug": true
-        Here are examples of things to look at:
+        
+        .. note:: Debug mode can be enabled in a client params file by setting **"enable_debug": true**
+        
+        .. note:: Here are examples of things to look at:
         ::
 
             print("Global stability rate:", round(debug_data_dict['global_stability_rate'], 6))
@@ -325,14 +354,22 @@ class BaseThoughtForgeClientSession():
             print("Per-block energy estimates:", debug_data_dict['block_energy_estimates'])
             print("Per-block stable times:", debug_data_dict['block_stable_times'])
 
+        :param debug_data_dict: A dictionary of global and block-level debug statistics
+        :type debug_data_dict: dict
         """ 
-        # print("Global stability rate:", round(debug_data_dict['global_stability_rate'], 6))
-        # print("Global energy estimate", round(debug_data_dict['global_energy_estimate'], 6))
-        # print("Per-block stability rates:", debug_data_dict['block_stability_rates'])
-        # print("Per-block energy estimates:", debug_data_dict['block_energy_estimates'])
-        # print("Per-block stable times:", debug_data_dict['block_stable_times'])
         pass
 
     def update(self, motor_action_dict):
-        """ Implement this function in client code to update environment state and return sensor data. """
+        """ 
+        Implement this function in client code to update environment state and return sensor data. 
+        
+        `update()` is called automatically during simulation and is intended to be the primary
+        point of entry for users to define the interaction between the thoughtforge model and
+        the specific simulation environment.
+        
+        :param motor_action_dict: A dictionary of motor names to motor values generated by the model
+        :type motor_action_dict: dict
+        :return: A dictionary of sensor names to sensor values to send to the model
+        :rtype: dict
+        """
         raise NotImplementedError
