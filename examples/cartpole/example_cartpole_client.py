@@ -62,4 +62,7 @@ if __name__ == "__main__":
     port = 4343 if not 'PORT' in os.environ else int(os.environ['PORT'])
     load_dotenv()
     api_key = os.getenv("THOUGHTFORGE_API_KEY")
+    # the basic example doesn't have the best performance, but is simple to follow:
     session = ExampleCartpoleSession('./examples/cartpole/example_cartpole.params', host, port, api_key)
+    # to see a more advanced solution for cartpole:
+    # session = ExampleCartpoleSession('./examples/cartpole/advanced_cartpole.params', host, port, api_key)

@@ -149,7 +149,7 @@ class BaseThoughtForgeClientSession():
             named_sensor_dict = self.update(next_motor_dict)
             self.sensor_value_history.append(named_sensor_dict)
             sensor_dict = {self.sensor_name_map[key]:val for key, val in named_sensor_dict.items()}
-            # sent sensor data to hte server
+            # sent sensor data to the server
             update_params = {
                 'session_id': self.session_id,
                 'sensor_dict': json.dumps(sensor_dict), 
