@@ -60,14 +60,40 @@ class BaseThoughtForgeClientSession():
         fragments = ''
         return urlunparse([scheme, netloc, path, params, query, fragments])
 
+    def _validate_sensors_motors(self):
+        """ this function is called after receiving a successful response 
+        during server initialzation to ensure all motors and sensors were
+        successfully registered"""
+        validation_successful = True
+        # for validation, check that we have the expected number of sensors
+        total_sensors = 0
+        for entry in self.client_params['sensors']:
+            if isinstance(entry['name'], List):
+                total_sensors += len(entry['name'])
+            else:
+                total_sensors += 1
+        if len(self.sensor_name_map) != total_sensors:
+            print("Some sensors failed registration. Found", len(self.sensor_name_map), "expected", total_sensors)
+            validation_successful = False
+        # for validation, check that we have the expected number of motors
+        total_motors = 0
+        for entry in self.client_params['motors']:
+            if isinstance(entry['name'], List):
+                total_motors += len(entry['name'])
+            else:
+                total_motors += 1
+        if len(self.motor_name_map) != total_motors:
+            print("Some motors failed registration. Found", len(self.sensor_name_map), "expected", total_sensors)
+            validation_successful = False
+        return validation_successful 
+
     def _initialize_session(self):
         """ Initializes a remote session on the ThoughtForge server """ 
         # close old session
         if self.session_id != None:
             self.close()
         
-        # iniitalize session
-        self.debug_enabled = safe_dict_get(self.client_params, 'enable_debug', False)
+        # if initialized with model_data, include in the post request
         model_data_to_send = None
         if self.model_data is not None:
             converted_model_data = {}
@@ -77,6 +103,7 @@ class BaseThoughtForgeClientSession():
             converted_model_data['values'] = self.model_data['values'].tolist()
             model_data_to_send = json.dumps(converted_model_data).encode()
 
+        self.debug_enabled = safe_dict_get(self.client_params, 'enable_debug', False)
         initSession_params = {
             'version': self.client_params['version'],
             'internal_timescale': safe_dict_get(self.client_params, 'internal_timescale', 1), 
@@ -94,35 +121,13 @@ class BaseThoughtForgeClientSession():
         if response.ok:
             response_dict = response.json()
             self.session_id = response_dict['session_id']
-            if self.session_id >= 0:
-                self.motor_name_map = json.loads(response_dict['motor_ids'])
-                self.sensor_name_map = json.loads(response_dict['sensor_ids'])
-                self.block_name_map = json.loads(response_dict['block_ids'])
-
-                # for validation, check that we have the expected number of sensors
-                total_sensors = 0
-                for entry in self.client_params['sensors']:
-                    if isinstance(entry['name'], List):
-                        total_sensors += len(entry['name'])
-                    else:
-                        total_sensors += 1
-                if len(self.sensor_name_map) != total_sensors:
-                    print("Some sensors failed registration. Found", len(self.sensor_name_map), "expected", total_sensors)
-                    initialization_failed = True
-                # for validation, check that we have the expected number of motors
-                total_motors = 0
-                for entry in self.client_params['motors']:
-                    if isinstance(entry['name'], List):
-                        total_motors += len(entry['name'])
-                    else:
-                        total_motors += 1
-                if len(self.motor_name_map) != total_motors:
-                    print("Some motors failed registration. Found", len(self.sensor_name_map), "expected", total_sensors)
-                    initialization_failed = True
-            else:
-                initialization_failed = True
+            self.motor_name_map = json.loads(response_dict['motor_ids'])
+            self.sensor_name_map = json.loads(response_dict['sensor_ids'])
+            self.block_name_map = json.loads(response_dict['block_ids'])
             session_log = json.loads(safe_dict_get(response_dict, 'session_log', []))
             self._process_session_logs(session_log)
+            if self.session_id < 0 or not self._validate_sensors_motors():
+                initialization_failed = True
         else:
             initialization_failed = True
 
@@ -140,9 +145,11 @@ class BaseThoughtForgeClientSession():
         print("Session", self.session_id, "starting simulation....")
         while not self._stop_requested:
             self.motor_value_history.append(next_motor_dict)
+            # send motor data into client to update the environment
             named_sensor_dict = self.update(next_motor_dict)
             self.sensor_value_history.append(named_sensor_dict)
             sensor_dict = {self.sensor_name_map[key]:val for key, val in named_sensor_dict.items()}
+            # sent sensor data to hte server
             update_params = {
                 'session_id': self.session_id,
                 'sensor_dict': json.dumps(sensor_dict), 
@@ -155,13 +162,16 @@ class BaseThoughtForgeClientSession():
             if not response.ok:
                 print("Session update failed. Server returned", response)
             response_dict = response.json()
+            # retrieve motor responses from the server
             motor_dict = response_dict['motor_dict']
             int_key_response_dict = {int(key):val for key, val in motor_dict.items()}
             next_motor_dict = {motor_name: safe_dict_get(int_key_response_dict, motor_id, 0.0) for motor_name, motor_id in self.motor_name_map.items()}
+            # process session logs and debugging data from server
             session_log = json.loads(safe_dict_get(response_dict, 'session_log', []))
             self._process_session_logs(session_log)
             debugging_data = json.loads(response_dict['debugging_data'])
             self._process_debugging_data(debugging_data)
+            # update simulation time
             self.sim_t += 1
     
     def _process_session_logs(self, session_logs):
@@ -202,20 +212,19 @@ class BaseThoughtForgeClientSession():
             self.debug_data_history.append(debug_data_dict)
             self.debug_data_received_notification(debug_data_dict)
 
-    def _get_history_by_name(self, list_of_named_dicts, name):
-        if len(list_of_named_dicts) > 0 and name in list_of_named_dicts[0]:
-            value_history = [entry_dict[name] for entry_dict in list_of_named_dicts]
-            return value_history
-        else:
-            print("Unable to find any values for name", name)
-            return []
-
-    def _end_session(self):
+    def _end_sim(self):
         """ Reports session information and clears out session-specific state """
+        def _get_history_by_name(list_of_named_dicts, name):
+            if len(list_of_named_dicts) > 0 and name in list_of_named_dicts[0]:
+                value_history = [entry_dict[name] for entry_dict in list_of_named_dicts]
+                return value_history
+            else:
+                print("Unable to find any values for name", name)
+                return []
         print("-----------------------------------------------------------------------")
         print("Session", self.session_id, "Summary (sim time:", self.sim_t, "updates)")
         for motor_name in self.motor_name_map.keys():
-            motor_history = self._get_history_by_name(self.motor_value_history, motor_name)
+            motor_history = _get_history_by_name(self.motor_value_history, motor_name)
             # note: example motor_history to debug further
             motor_min = np.min(motor_history)
             motor_max = np.max(motor_history)
@@ -223,7 +232,7 @@ class BaseThoughtForgeClientSession():
             motor_mean = np.mean(motor_history)
             print("- Motor '" + motor_name + "'\tmin:", motor_min, "\tmax:", motor_max, "\tmedian:", motor_median, "\tmean:", motor_mean)
         for sensor_name in self.sensor_name_map.keys():
-            sensor_history = self._get_history_by_name(self.sensor_value_history, sensor_name)
+            sensor_history = _get_history_by_name(self.sensor_value_history, sensor_name)
             # note: example sensor_history to debug further
             sensor_min = np.min(sensor_history)
             sensor_max = np.max(sensor_history)
@@ -240,7 +249,8 @@ class BaseThoughtForgeClientSession():
         else:
             print("Note: Stability/Energy history values not available unless 'enable_debug' is set to true in client .params settings. ")
         print("-----------------------------------------------------------------------")
-
+        
+        # cleanup session state
         self.sim_ended_notification()
         self.sim_t = 0
         self.session_id = None
@@ -267,7 +277,7 @@ class BaseThoughtForgeClientSession():
                 self._process_session_logs(session_log)
             else:
                 print("Session shutdown failed. Server returned", response)
-            self._end_session()
+            self._end_sim()
 
     def get_num_motors(self):
         """ returns the number of motors that have been added to the session model """
