@@ -1,5 +1,6 @@
 
 import json, os, requests, traceback
+import numpy as np
 from typing import List
 from urllib.parse import urlencode, urlparse, urlunparse
 
@@ -20,15 +21,20 @@ class BaseThoughtForgeClientSession():
                 print("ThoughtForge API Key required.")
                 assert(False)
 
+            self.sim_t = 0
             self.session_id = None
-            self.host = host
-            self.port = port
-            self.api_key = api_key
-            self.model_data = model_data
             self.sensor_name_map = {}
             self.motor_name_map = {}
             self._stop_requested = False
             self.all_session_logs = []
+            self.sensor_value_history = []
+            self.motor_value_history = []
+            self.debug_data_history = []
+
+            self.host = host
+            self.port = port
+            self.api_key = api_key
+            self.model_data = model_data
             self._initialize_session()
             if self.session_id is not None and self.session_id >= 0:
                 self._start_sim()
@@ -44,6 +50,7 @@ class BaseThoughtForgeClientSession():
             self.close()
 
     def _build_url(self, path, args_dict=None):
+        """ Helper function for generating request URLS """ 
         # Returns a list in the structure of urlparse.ParseResult
         scheme = 'http'
         netloc = self.host + ':' + str(self.port)
@@ -54,11 +61,13 @@ class BaseThoughtForgeClientSession():
         return urlunparse([scheme, netloc, path, params, query, fragments])
 
     def _initialize_session(self):
+        """ Initializes a remote session on the ThoughtForge server """ 
         # close old session
         if self.session_id != None:
             self.close()
         
         # iniitalize session
+        self.debug_enabled = safe_dict_get(self.client_params, 'enable_debug', False)
         model_data_to_send = None
         if self.model_data is not None:
             converted_model_data = {}
@@ -113,7 +122,7 @@ class BaseThoughtForgeClientSession():
             else:
                 initialization_failed = True
             session_log = json.loads(safe_dict_get(response_dict, 'session_log', []))
-            self.process_session_logs(session_log)
+            self._process_session_logs(session_log)
         else:
             initialization_failed = True
 
@@ -127,15 +136,18 @@ class BaseThoughtForgeClientSession():
         """ Starts simulation of the agent and environment and triggers subsequent calls to update() """
         self.sim_started_notification()
         motor_ids = list(self.motor_name_map.values())
-        next_motor_action_dict = {motor_name: 0.0 for motor_name in self.motor_name_map.keys()}
+        next_motor_dict = {motor_name: 0.0 for motor_name in self.motor_name_map.keys()}
         print("Session", self.session_id, "starting simulation....")
         while not self._stop_requested:
-            named_sensor_dict = self.update(next_motor_action_dict)
+            self.motor_value_history.append(next_motor_dict)
+            named_sensor_dict = self.update(next_motor_dict)
+            self.sensor_value_history.append(named_sensor_dict)
             sensor_dict = {self.sensor_name_map[key]:val for key, val in named_sensor_dict.items()}
             update_params = {
                 'session_id': self.session_id,
                 'sensor_dict': json.dumps(sensor_dict), 
-                'motor_ids_requested': json.dumps(motor_ids)
+                'motor_ids_requested': json.dumps(motor_ids),
+                'collect_debug_data': self.debug_enabled
             }
             update_url = self._build_url('/updateSim', update_params)
             headers = {"X-thoughtforge-key": self.api_key}
@@ -144,12 +156,104 @@ class BaseThoughtForgeClientSession():
                 print("Session update failed. Server returned", response)
             response_dict = response.json()
             motor_dict = response_dict['motor_dict']
-            session_log = json.loads(safe_dict_get(response_dict, 'session_log', []))
-            self.process_session_logs(session_log)
             int_key_response_dict = {int(key):val for key, val in motor_dict.items()}
-            next_motor_action_dict = {motor_name: safe_dict_get(int_key_response_dict, motor_id, 0.0) for motor_name, motor_id in self.motor_name_map.items()}
+            next_motor_dict = {motor_name: safe_dict_get(int_key_response_dict, motor_id, 0.0) for motor_name, motor_id in self.motor_name_map.items()}
+            session_log = json.loads(safe_dict_get(response_dict, 'session_log', []))
+            self._process_session_logs(session_log)
+            debugging_data = json.loads(response_dict['debugging_data'])
+            self._process_debugging_data(debugging_data)
+            self.sim_t += 1
+    
+    def _process_session_logs(self, session_logs):
+        """ Processes session logs as they are received from the server. """ 
+        if len(session_logs) > 0:
+            print("Server messages recieved:")
+            for log_messsage in session_logs:
+                print(" -", log_messsage)
+            self.all_session_logs.extend(session_logs)
+
+    def _process_debugging_data(self, debugging_data):
+        """ Processes debugging data as it is received by the server. If client has enabled debugging,
+        this function calls the debug_data_received_notification() callback. """ 
+        if self.debug_enabled:
+            global_stability = debugging_data['global_stability_rate']
+            global_energy_estimate = debugging_data['global_energy_estimate']
+            unmapped_block_stability = debugging_data['block_stability_rates']
+            unmapped_block_energy = debugging_data['block_energy_estimates']
+            unmapped_block_times = debugging_data['block_stable_times']
+            # convert numeric block id to string for easy lookup (debugging data keys are strings from json decode)
+            named_block_stability_rates = {
+                name: unmapped_block_stability[str(block_id)]
+                for name, block_id in self.block_name_map.items()}
+            named_block_energy_estimates = {
+                name: unmapped_block_energy[str(block_id)]
+                for name, block_id in self.block_name_map.items()}
+            named_block_stable_times = {
+                name: unmapped_block_times[str(block_id)]
+                for name, block_id in self.block_name_map.items()}
+
+            debug_data_dict = {
+                'global_stability_rate': global_stability,
+                'global_energy_estimate': global_energy_estimate,
+                'block_stability_rates' : named_block_stability_rates,
+                'block_energy_estimates' : named_block_energy_estimates,
+                'block_stable_times' : named_block_stable_times
+            }
+            self.debug_data_history.append(debug_data_dict)
+            self.debug_data_received_notification(debug_data_dict)
+
+    def _get_history_by_name(self, list_of_named_dicts, name):
+        if len(list_of_named_dicts) > 0 and name in list_of_named_dicts[0]:
+            value_history = [entry_dict[name] for entry_dict in list_of_named_dicts]
+            return value_history
+        else:
+            print("Unable to find any values for name", name)
+            return []
+
+    def _end_session(self):
+        """ Reports session information and clears out session-specific state """
+        print("-----------------------------------------------------------------------")
+        print("Session", self.session_id, "Summary (sim time:", self.sim_t, "updates)")
+        for motor_name in self.motor_name_map.keys():
+            motor_history = self._get_history_by_name(self.motor_value_history, motor_name)
+            # note: example motor_history to debug further
+            motor_min = np.min(motor_history)
+            motor_max = np.max(motor_history)
+            motor_median = np.median(motor_history)
+            motor_mean = np.mean(motor_history)
+            print("- Motor '" + motor_name + "'\tmin:", motor_min, "\tmax:", motor_max, "\tmedian:", motor_median, "\tmean:", motor_mean)
+        for sensor_name in self.sensor_name_map.keys():
+            sensor_history = self._get_history_by_name(self.sensor_value_history, sensor_name)
+            # note: example sensor_history to debug further
+            sensor_min = np.min(sensor_history)
+            sensor_max = np.max(sensor_history)
+            sensor_median = np.median(sensor_history)
+            sensor_mean = np.mean(sensor_history)
+            print("- Sensor '" +  sensor_name + "'\tmin:", sensor_min, "\tmax:", sensor_max, "\tmedian:", sensor_median, "\tmean:", sensor_mean)
+
+        if self.debug_enabled:
+            final_state = self.debug_data_history[-1]
+            # note: example debug_data_history to debug further
+            print("Last debug state received:")
+            for key, val in final_state.items():
+                print("-", key, ":", val)
+        else:
+            print("Note: Stability/Energy history values not available unless 'enable_debug' is set to true in client .params settings. ")
+        print("-----------------------------------------------------------------------")
+
+        self.sim_ended_notification()
+        self.sim_t = 0
+        self.session_id = None
+        self.sensor_name_map = {}
+        self.motor_name_map = {}
+        self._stop_requested = False
+        self.all_session_logs = []
+        self.sensor_value_history = []
+        self.motor_value_history = []
+        self.debug_data_history = []
 
     def close(self):
+        """ Closes the remote ThoughtForge session """ 
         # shut down session
         if self.session_id is not None and self.session_id >= 0:
             shutdownSession_params = {'session_id': self.session_id}
@@ -160,12 +264,10 @@ class BaseThoughtForgeClientSession():
                 print("Session", self.session_id, "has been shut down.")
                 response_dict = response.json()
                 session_log = json.loads(safe_dict_get(response_dict, 'session_log', []))
-                self.process_session_logs(session_log)
+                self._process_session_logs(session_log)
             else:
                 print("Session shutdown failed. Server returned", response)
-            self.session_id = None
-            self.sensor_name_map = {}
-            self.motor_name_map = {}
+            self._end_session()
 
     def get_num_motors(self):
         """ returns the number of motors that have been added to the session model """
@@ -184,13 +286,33 @@ class BaseThoughtForgeClientSession():
         any simulation environment parameters """
         pass
 
+    def sim_ended_notification(self):
+        """ This function can optionally be implemented by users to handle end-of-session
+        needs or to report on results """
+        pass
+
+    def debug_data_received_notification(self, debug_data_dict):
+        """ This function is called automatically when debug data is being collected.
+        Implement this function in a user client session to perform custom runtime debugging.
+        Debug mode can be enabled in a client params file by setting  
+        "enable_debug": true
+        Here are examples of things to look at:
+        ::
+
+            print("Global stability rate:", round(debug_data_dict['global_stability_rate'], 6))
+            print("Global energy estimate", round(debug_data_dict['global_energy_estimate'], 6))
+            print("Per-block stability rates:", debug_data_dict['block_stability_rates'])
+            print("Per-block energy estimates:", debug_data_dict['block_energy_estimates'])
+            print("Per-block stable times:", debug_data_dict['block_stable_times'])
+
+        """ 
+        # print("Global stability rate:", round(debug_data_dict['global_stability_rate'], 6))
+        # print("Global energy estimate", round(debug_data_dict['global_energy_estimate'], 6))
+        # print("Per-block stability rates:", debug_data_dict['block_stability_rates'])
+        # print("Per-block energy estimates:", debug_data_dict['block_energy_estimates'])
+        # print("Per-block stable times:", debug_data_dict['block_stable_times'])
+        pass
+
     def update(self, motor_action_dict):
         """ Implement this function in client code to update environment state and return sensor data. """
         raise NotImplementedError
-    
-    def process_session_logs(self, session_logs):
-        if len(session_logs) > 0:
-            print("Server messages recieved:")
-            for log_messsage in session_logs:
-                print(" -", log_messsage)
-            self.all_session_logs.extend(session_logs)
