@@ -1,7 +1,4 @@
-import gym
-import math 
-import os
-from dotenv import load_dotenv
+import gym, math , os
 
 from thoughtforge_client import BaseThoughtForgeClientSession
 
@@ -55,8 +52,4 @@ class ExampleMountainCarSession(BaseThoughtForgeClientSession):
 
 
 if __name__ == "__main__": 
-    host = '0.0.0.0' if not 'HOST' in os.environ else os.environ['HOST']
-    port = 4343 if not 'PORT' in os.environ else int(os.environ['PORT'])
-    load_dotenv()
-    api_key = os.getenv("THOUGHTFORGE_API_KEY")
-    session = ExampleMountainCarSession('./examples/mountaincar/example_mountaincar.params', host, port, api_key)
+    session = ExampleMountainCarSession('./examples/mountaincar/example_mountaincar.params')

@@ -1,6 +1,4 @@
-import gym
-import os
-from dotenv import load_dotenv
+import gym, os
 
 from thoughtforge_client import BaseThoughtForgeClientSession
 
@@ -58,11 +56,7 @@ class ExampleCartpoleSession(BaseThoughtForgeClientSession):
 
 
 if __name__ == "__main__": 
-    host = '0.0.0.0' if not 'HOST' in os.environ else os.environ['HOST']
-    port = 4343 if not 'PORT' in os.environ else int(os.environ['PORT'])
-    load_dotenv()
-    api_key = os.getenv("THOUGHTFORGE_API_KEY")
     # the basic example doesn't have the best performance, but is simple to follow:
-    session = ExampleCartpoleSession('./examples/cartpole/example_cartpole.params', host, port, api_key)
+    session = ExampleCartpoleSession('./examples/cartpole/example_cartpole.params')
     # to see a more advanced solution for cartpole:
-    # session = ExampleCartpoleSession('./examples/cartpole/advanced_cartpole.params', host, port, api_key)
+    # session = ExampleCartpoleSession('./examples/cartpole/advanced_cartpole.params')

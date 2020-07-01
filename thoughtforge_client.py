@@ -1,6 +1,7 @@
 
 import json, os, requests, traceback
 import numpy as np
+from dotenv import load_dotenv
 from typing import List
 from urllib.parse import urlencode, urlparse, urlunparse
 
@@ -9,9 +10,18 @@ from utils import safe_dict_get, load_client_params, CURRENT_CLIENT_PARAMS_VERSI
 
 class BaseThoughtForgeClientSession():
     """ Base class for implementing a client for the ThoughtForge server API """
-    def __init__(self, file_name, host, port, api_key, model_data=None):
+    def __init__(self, file_name, host=None, port=None, api_key=None, model_data=None):
         try:
+            load_dotenv()
+            if api_key is None:
+                api_key = os.getenv("THOUGHTFORGE_API_KEY")
+            if host is None:
+                host = os.getenv("THOUGHTFORGE_HOST")
+            if port is None:
+                port = os.getenv("THOUGHTFORGE_PORT")
+
             self.client_params = load_client_params(file_name)
+
             # check version and api key
             if ('version' not in self.client_params) or self.client_params['version'] != CURRENT_CLIENT_PARAMS_VERSION:
                 print(self.client_params)

@@ -2,7 +2,6 @@ import gym
 import math 
 import os
 import numpy as np
-from dotenv import load_dotenv
 
 from thoughtforge_client import BaseThoughtForgeClientSession
 
@@ -164,8 +163,4 @@ class ExampleReacher3Session(BaseThoughtForgeClientSession):
 
 
 if __name__ == "__main__": 
-    host = '0.0.0.0' if not 'HOST' in os.environ else os.environ['HOST']
-    port = 4343 if not 'PORT' in os.environ else int(os.environ['PORT'])
-    load_dotenv()
-    api_key = os.getenv("THOUGHTFORGE_API_KEY")
-    session = ExampleReacher3Session('./advanced/reacher_3joint/example_reacher3.params', host, port, api_key)
+    session = ExampleReacher3Session('./advanced/reacher_3joint/example_reacher3.params')

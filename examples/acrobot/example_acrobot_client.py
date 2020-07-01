@@ -1,7 +1,5 @@
-import gym
+import os, gym
 import numpy as np
-import os
-from dotenv import load_dotenv
 
 from thoughtforge_client import BaseThoughtForgeClientSession
 
@@ -59,8 +57,4 @@ class ExampleAcrobotSession(BaseThoughtForgeClientSession):
 
 
 if __name__ == "__main__": 
-    host = '0.0.0.0' if not 'HOST' in os.environ else os.environ['HOST']
-    port = 4343 if not 'PORT' in os.environ else int(os.environ['PORT'])
-    load_dotenv()
-    api_key = os.getenv("THOUGHTFORGE_API_KEY")
-    session = ExampleAcrobotSession('./examples/acrobot/example_acrobot.params', host, port, api_key)
+    session = ExampleAcrobotSession('./examples/acrobot/example_acrobot.params')

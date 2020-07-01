@@ -1,7 +1,6 @@
 import gym
 import math, os, pickle
 import numpy as np
-from dotenv import load_dotenv
 
 from thoughtforge_client import BaseThoughtForgeClientSession
 from advanced.reacher_3joint.example_reacher3_client import ExampleReacher3Session
@@ -17,6 +16,4 @@ if __name__ == "__main__":
     with open(file_location, 'rb') as out_file:
         model_data = pickle.load(out_file)
 
-    load_dotenv()
-    api_key = os.getenv("THOUGHTFORGE_API_KEY")
-    session = ExampleReacher3Session('./advanced/reacher_3joint/example_reacher3.params', host, port, api_key, model_data=model_data)
+    session = ExampleReacher3Session('./advanced/reacher_3joint/example_reacher3.params', model_data=model_data)
