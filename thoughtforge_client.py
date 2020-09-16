@@ -27,7 +27,7 @@ class BaseThoughtForgeClientSession():
     :type model_data: dict
 
     """
-    def __init__(self, file_name, host=None, port=None, api_key=None, model_data=None):
+    def __init__(self, file_name, host=None, port=None, protocol='https', api_key=None, model_data=None):
         try:
             load_dotenv()
             if api_key is None:
@@ -36,6 +36,9 @@ class BaseThoughtForgeClientSession():
                 host = os.getenv("THOUGHTFORGE_HOST")
             if port is None:
                 port = os.getenv("THOUGHTFORGE_PORT")
+            env_protocol = os.getenv("THOUGHTFORGE_PROTOCOL")
+            if env_protocol is not None:
+                protocol = env_protocol
 
             self.client_params = load_client_params(file_name)
 
@@ -60,6 +63,7 @@ class BaseThoughtForgeClientSession():
 
             self.host = host
             self.port = port
+            self.protocol = protocol
             self.api_key = api_key
             self.model_data = model_data
             self._initialize_session()
@@ -79,7 +83,8 @@ class BaseThoughtForgeClientSession():
     def _build_url(self, path, args_dict=None):
         """ Helper function for generating request URLS """ 
         # Returns a list in the structure of urlparse.ParseResult
-        scheme = 'http'
+        assert(self.protocol in ['http', 'https'])
+        scheme = self.protocol
         netloc = self.host + ':' + str(self.port)
         path = path
         params = urlencode(args_dict) if args_dict else '' 
@@ -142,7 +147,7 @@ class BaseThoughtForgeClientSession():
             'sensors' : json.dumps(self.client_params['sensors']),
             }
         init_url = self._build_url('/initSession', initSession_params)
-        headers = {"X-thoughtforge-key": self.api_key}
+        headers = {"x-thoughtforge-key": self.api_key}
         response = requests.post(init_url, headers=headers, data=model_data_to_send)
         initialization_failed = False
         if response.ok:
@@ -184,7 +189,7 @@ class BaseThoughtForgeClientSession():
                 'collect_debug_data': self.debug_enabled
             }
             update_url = self._build_url('/updateSim', update_params)
-            headers = {"X-thoughtforge-key": self.api_key}
+            headers = {"x-thoughtforge-key": self.api_key}
             response = requests.post(update_url, headers=headers)
             if not response.ok:
                 print("Session update failed. Server returned", response)
@@ -295,7 +300,7 @@ class BaseThoughtForgeClientSession():
         if self.session_id is not None and self.session_id >= 0:
             shutdownSession_params = {'session_id': self.session_id}
             shutdown_url = self._build_url('/shutdownSession', shutdownSession_params)
-            headers = {"X-thoughtforge-key": self.api_key}
+            headers = {"x-thoughtforge-key": self.api_key}
             response = requests.post(shutdown_url, headers=headers)
             if response.ok:
                 print("Session", self.session_id, "has been shut down.")
