@@ -66,6 +66,16 @@ class BaseThoughtForgeClientSession():
             self.protocol = protocol
             self.api_key = api_key
             self.model_data = model_data
+
+            server_status_url = self._build_url('/')
+            headers = {"x-thoughtforge-key": self.api_key}
+            response = requests.get(server_status_url, headers=headers)
+            response_text = response.text
+            if response.ok:
+                print("Connected:", response_text)
+            else:
+                print("Server ping failure:", response_text)
+
             self._initialize_session()
             if self.session_id is not None and self.session_id >= 0:
                 self._start_sim()
