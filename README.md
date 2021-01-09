@@ -10,6 +10,8 @@ Note: Python has difficulty with root directories that contain dashes, so it's i
 5) set server THOUGHTFORGE_HOST and THOUGHTFORGE_PORT environment variables as needed
 (optionally, the client makes use of python-dotenv, and you can place your environment variables in a .env file)
 
+API documentation can be found at https://thoughtforge-api.readthedocs.io/
+
 To build and view documentation locally:
 1) cd docs
 2) make html

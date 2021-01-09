@@ -13,15 +13,15 @@ class BaseThoughtForgeClientSession():
     
     This class is a base class for implementing client applications on the ThoughtForge 
     platform. It manages the protocol for talking to the server and is inteded to be inherited
-    by users to implement simple interative simulations.
+    by users to implement simple interactive simulations.
 
     .. seealso:: Please see the ./examples/cartpole/ directory for an example usage of this class.
 
     :param file_name: The parameter file for specifying sensors, motors and model configuration
     :type file_name: str
-    :param host: Host address for the destination ThoughtForge server. Defaults to `None`. If left unset, will be populated from hte environment variable 'THOUGHTFORGE_HOST'
+    :param host: Host address for the destination ThoughtForge server. Defaults to `None`. If left unset, will be populated from the environment variable 'THOUGHTFORGE_HOST'
     :type host: str
-    :param port: Host port for the destination ThoughtForge server. Defaults to `None`. If left unset, will be populated from hte environment variable 'THOUGHTFORGE_PORT'
+    :param port: Host port for the destination ThoughtForge server. Defaults to `None`. If left unset, will be populated from the environment variable 'THOUGHTFORGE_PORT'
     :type port: int
     :param model_data: Optional parameter for supplying saved model data at initialization of the sim.
     :type model_data: dict
