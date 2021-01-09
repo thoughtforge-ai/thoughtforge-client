@@ -75,6 +75,12 @@ class ExampleReacher3Session(BaseThoughtForgeClientSession):
         if self.env is not None:
             self._reset_env()
         print("Complete.")
+
+    def sim_ended_notification(self):
+        """ On sim start, destroy environment """
+        if self.env is not None:
+            self.env.close()
+            self.env = None
         
     def update(self, motor_dict):
         """ advance the environment sim """

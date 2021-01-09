@@ -181,14 +181,16 @@ class BaseThoughtForgeClientSession():
 
     def _start_sim(self):
         """ Starts simulation of the agent and environment and triggers subsequent calls to update() """
-        self.sim_started_notification()
+        initial_sensor_dict = self.sim_started_notification()
+        if initial_sensor_dict is None:
+            initial_sensor_dict = {
+                sensor_name: 0.0
+                for sensor_name in self.sensor_name_map.keys()}
+                
+        named_sensor_dict = initial_sensor_dict
         motor_ids = list(self.motor_name_map.values())
-        next_motor_dict = {motor_name: 0.0 for motor_name in self.motor_name_map.keys()}
         print("Session", self.session_id, "starting simulation....")
         while not self._stop_requested:
-            self.motor_value_history.append(next_motor_dict)
-            # send motor data into client to update the environment
-            named_sensor_dict = self.update(next_motor_dict)
             self.sensor_value_history.append(named_sensor_dict)
             sensor_dict = {self.sensor_name_map[key]:val for key, val in named_sensor_dict.items()}
             # sent sensor data to the server
@@ -208,6 +210,10 @@ class BaseThoughtForgeClientSession():
             motor_dict = response_dict['motor_dict']
             int_key_response_dict = {int(key):val for key, val in motor_dict.items()}
             next_motor_dict = {motor_name: safe_dict_get(int_key_response_dict, motor_id, 0.0) for motor_name, motor_id in self.motor_name_map.items()}
+            self.motor_value_history.append(next_motor_dict)
+            # send motor data into client to update the environment
+            named_sensor_dict = self.update(next_motor_dict)
+
             # process session logs and debugging data from server
             session_log = json.loads(safe_dict_get(response_dict, 'session_log', []))
             self._process_session_logs(session_log)
@@ -256,6 +262,7 @@ class BaseThoughtForgeClientSession():
 
     def _end_sim(self):
         """ Reports session information and clears out session-specific state """
+
         def _get_history_by_name(list_of_named_dicts, name):
             if len(list_of_named_dicts) > 0 and name in list_of_named_dicts[0]:
                 value_history = [entry_dict[name] for entry_dict in list_of_named_dicts]
@@ -263,6 +270,9 @@ class BaseThoughtForgeClientSession():
             else:
                 print("Unable to find any values for name", name)
                 return []
+
+        self.sim_ended_notification()
+
         print("-----------------------------------------------------------------------")
         print("Session", self.session_id, "Summary (sim time:", self.sim_t, "updates)")
         for motor_name in self.motor_name_map.keys():
@@ -345,7 +355,13 @@ class BaseThoughtForgeClientSession():
 
     def sim_started_notification(self):
         """ This function can optionally be implemented by users to initialize 
-        any simulation environment parameters """
+        any simulation environment parameters, and set the initial sensor state
+        from the simulation. If this function isn't implemented, initial sensor 
+        values are assumed to be 0.
+
+        :return: initial sensor state of the simulation
+        :rtype: dict
+        """
         pass
 
     def sim_ended_notification(self):
