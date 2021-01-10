@@ -29,6 +29,8 @@ class BaseThoughtForgeClientSession():
     """
     def __init__(self, file_name, host=None, port=None, protocol='https', api_key=None, model_data=None):
         try:
+            self.session_id = None
+            
             load_dotenv()
             if api_key is None:
                 api_key = os.getenv("THOUGHTFORGE_API_KEY")
@@ -52,7 +54,6 @@ class BaseThoughtForgeClientSession():
                 assert(False)
 
             self.sim_t = 0
-            self.session_id = None
             self.sensor_name_map = {}
             self.motor_name_map = {}
             self._stop_requested = False

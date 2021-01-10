@@ -88,9 +88,9 @@ class ExampleReacher3Session(BaseThoughtForgeClientSession):
         self.env.render()
 
         # extract action sent from server
-        motor_value_0 = motor_dict['motor_value_0']   
-        motor_value_1 = motor_dict['motor_value_1']
-        motor_value_2 = motor_dict['motor_value_2']
+        motor_value_0 = motor_dict['motor_value_0'][0]
+        motor_value_1 = motor_dict['motor_value_1'][0]
+        motor_value_2 = motor_dict['motor_value_2'][0]
         
         # step openAI gym env and get updated observation
         env_step_result = self.env.step([motor_value_0, motor_value_1, motor_value_2])
