@@ -63,4 +63,4 @@ class ExampleAcrobotSession(BaseThoughtForgeClientSession):
 
 
 if __name__ == "__main__": 
-    session = ExampleAcrobotSession('./examples/acrobot/example_acrobot.params')
+    session = ExampleAcrobotSession.from_file('./examples/acrobot/example_acrobot.params')

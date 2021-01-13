@@ -169,4 +169,4 @@ class ExampleReacher3Session(BaseThoughtForgeClientSession):
 
 
 if __name__ == "__main__": 
-    session = ExampleReacher3Session('./advanced/reacher_3joint/example_reacher3.params')
+    session = ExampleReacher3Session.from_file('./advanced/reacher_3joint/example_reacher3.params')

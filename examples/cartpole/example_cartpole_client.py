@@ -65,4 +65,4 @@ if __name__ == "__main__":
     # the basic example doesn't have the best performance, but is simple to follow:
     # session = ExampleCartpoleSession('./examples/cartpole/example_cartpole.params')
     # to see a more advanced solution for cartpole:
-    session = ExampleCartpoleSession('./examples/cartpole/advanced_cartpole.params')
+    session = ExampleCartpoleSession.from_file('./examples/cartpole/advanced_cartpole.params')

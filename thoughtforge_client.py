@@ -27,7 +27,7 @@ class BaseThoughtForgeClientSession():
     :type model_data: dict
 
     """
-    def __init__(self, file_name, host=None, port=None, protocol='https', api_key=None, model_data=None):
+    def __init__(self, json_specification, host=None, port=None, protocol='https', api_key=None, model_data=None):
         try:
             self.session_id = None
             
@@ -41,9 +41,9 @@ class BaseThoughtForgeClientSession():
             env_protocol = os.getenv("THOUGHTFORGE_PROTOCOL")
             if env_protocol is not None:
                 protocol = env_protocol
-
-            self.client_params = load_client_params(file_name)
-
+                
+            self.client_params = json_specification
+            
             # check version and api key
             if ('version' not in self.client_params) or self.client_params['version'] != CURRENT_CLIENT_PARAMS_VERSION:
                 print(self.client_params)
@@ -90,6 +90,11 @@ class BaseThoughtForgeClientSession():
             raise
         finally:
             self._close_session()
+
+    @classmethod
+    def from_file(cls,file_name, host=None, port=None, protocol='https', api_key=None, model_data=None):
+        json_specification = load_client_params(file_name)
+        return cls(json_specification, host=host, port=port, protocol=protocol, api_key=api_key, model_data=model_data)
 
     def _build_url(self, path, args_dict=None):
         """ Helper function for generating request URLS """ 
@@ -141,9 +146,9 @@ class BaseThoughtForgeClientSession():
         if self.model_data is not None:
             converted_model_data = {}
             weight_array_list = self.model_data['weights']
-            weight_list_list = [weightarray.tolist() for weightarray in weight_array_list]
+            weight_list_list = [weightarray for weightarray in weight_array_list]
             converted_model_data['weights'] = weight_list_list
-            converted_model_data['values'] = self.model_data['values'].tolist()
+            converted_model_data['values'] = self.model_data['values']
             model_data_to_send = json.dumps(converted_model_data).encode()
 
         self.debug_enabled = safe_dict_get(self.client_params, 'enable_debug', False)

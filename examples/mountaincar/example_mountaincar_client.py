@@ -58,4 +58,4 @@ class ExampleMountainCarSession(BaseThoughtForgeClientSession):
 
 
 if __name__ == "__main__": 
-    session = ExampleMountainCarSession('./examples/mountaincar/example_mountaincar.params')
+    session = ExampleMountainCarSession.from_file('./examples/mountaincar/example_mountaincar.params')

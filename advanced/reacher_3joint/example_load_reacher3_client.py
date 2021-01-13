@@ -1,5 +1,5 @@
 import gym
-import math, os, pickle
+import math, os, json
 import numpy as np
 
 from thoughtforge_client import BaseThoughtForgeClientSession
@@ -12,8 +12,10 @@ if __name__ == "__main__":
     saved_network_directory = "./advanced/reacher_3joint/"
     filename = INSERT FILE NAME HERE
     file_location = os.path.join(saved_network_directory, filename)
-    model_data = None
-    with open(file_location, 'rb') as out_file:
-        model_data = pickle.load(out_file)
+    model_data_file = None
+    with open(file_location, 'r', encoding='utf-8') as out_file:
+        model_data_file = json.load(out_file)
 
-    session = ExampleReacher3Session('./advanced/reacher_3joint/example_reacher3.params', model_data=model_data)
+    json_model_specification = model_data_file['specification']
+    model_data = model_data_file['model_data']
+    session = ExampleReacher3Session(json_model_specification, model_data=model_data)
